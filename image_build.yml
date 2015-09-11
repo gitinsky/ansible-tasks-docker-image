@@ -1,0 +1,47 @@
+- name: get numeric tags for this image if any
+  shell: docker images|grep -E '^{{ image_build_name }}\s+[0-9,.]+\s+'|awk {'print $2'}
+  failed_when: false
+  changed_when: false
+  register: image_tags
+
+- name: get uuids for this image versions
+  shell: docker images|grep -E '^{{ image_build_name }}\s+[0-9,.]+\s+'|awk {'print $3'}
+  failed_when: false
+  changed_when: false
+  register: image_uuids
+  when: image_tags.stdout_lines|length > 0
+
+#== docker_image is not supported in ansible prio to 2.0 due to issues:
+#   https://github.com/ansible/ansible-modules-core/issues/1227
+#   https://github.com/ansible/ansible/issues/10879
+# ! https://github.com/ansible/ansible-modules-core/issues/1707
+#   https://github.com/ansible/ansible/issues/10879
+#==
+# - name: build {{ image_build_name }}
+#   docker_image: path={{ image_build_path }}
+#                 name="{{ image_build_name }}"
+#                 state=build
+#                 timeout=3600
+#                 nocache=no
+#   register: result
+#   changed_when: "image_uuids.stdout_lines is not defined or result.image_id not in image_uuids.stdout_lines"
+#   # until: result|success
+#   # retries: 2
+#   # delay: 10
+#=='
+
+- name: build {{ image_build_name }}
+  command: docker build -t {{ image_build_name }}:latest {{ image_build_path }}
+  register: result
+  changed_when: "image_uuids.stdout_lines is not defined or ('Successfully built ' in result.stdout
+                                                              and result.stdout.split('Successfully built ')[1] not in image_uuids.stdout_lines
+                                                              )"
+
+- name: get image id
+  shell: docker images| grep -E '^{{ image_build_name }}\s+latest'
+  changed_when: false
+  register: imagegen_image
+
+- name: add version tag
+  shell: "docker tag {{ imagegen_image.stdout.split()[2] }} {{ image_build_name }}:{{ image_tags.stdout.split('\n')| version_up }}"
+  when: "image_uuids.stdout_lines is not defined or imagegen_image.stdout.split()[2] not in image_uuids.stdout_lines"
