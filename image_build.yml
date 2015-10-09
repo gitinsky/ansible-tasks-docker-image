@@ -42,6 +42,6 @@
   changed_when: false
   register: imagegen_image
 
-- name: add version tag
-  shell: "docker tag {{ imagegen_image.stdout.split()[2] }} {{ image_build_name }}:{{ image_tags.stdout.split('\n')| version_up }}"
-  when: "image_uuids.stdout_lines is not defined or imagegen_image.stdout.split()[2] not in image_uuids.stdout_lines"
+#- name: add version tag
+#  shell: "docker tag {{ imagegen_image.stdout.split()[2] }} {{ image_build_name }}:{{ image_tags.stdout.split('\n')| version_up }}"
+#  when: "image_uuids.stdout_lines is not defined or imagegen_image.stdout.split()[2] not in image_uuids.stdout_lines"
